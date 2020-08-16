@@ -1,10 +1,8 @@
 scenario <- as.numeric(commandArgs(trailingOnly=TRUE))
-# 
-rm(list=ls())
-scenario <- c(3, 1000)
+# scenario <- c(3, 1000)
 
 ## load packages needed for reading and analyzing data
-pckgs <- c("dplyr","readr","data.table","lubridate","mgcv","readxl")
+pckgs <- c("dplyr","readr","data.table","lubridate","mgcv","readxl","stringr","tidyr")
 sapply(pckgs, function(x) if(!require(x,character.only=TRUE,quietly=TRUE)) {
         install.packages(x)
         require(x, character.only=TRUE)
@@ -143,8 +141,7 @@ for(i in inx_ls[[inx_arr]]){
                        phase = replace(phase, date %in% mo6_dates_i, "6months")
                        ) %>% 
                 dplyr::select(ID, HEADER_TIME_STAMP, date, phase, X, Y, Z) 
-        # started at 11:04
-        Sys.time()
+        
         ## calculate minute level measures (AI, MAD, MED, SD)
         df_measures_i <- calculate_measures(df_i)
         df_measures_i <- 
@@ -160,26 +157,41 @@ for(i in inx_ls[[inx_arr]]){
                        phase = replace(phase, date %in% mo3_dates_i, "3months"),
                        phase = replace(phase, date %in% mo6_dates_i, "6months")
                 )
+        ## add in demographic and device data
+        df_measures_i <- 
+                df_measures_i %>% 
+                mutate("arm" = dates_i$ARM,
+                       "site" = dates_i$site,
+                       "sex" = as.vector(raw_data_i$header$Value[raw_data_i$header$Field =="Sex"]),
+                       "age" = as.vector(raw_data_i$header$Value[raw_data_i$header$Field =="Age"]),
+                       "location" = as.vector(raw_data_i$header$Value[raw_data_i$header$Field =="Limb"]),
+                       "height" = as.vector(raw_data_i$header$Value[raw_data_i$header$Field =="Height"]),
+                       "mass" = as.vector(raw_data_i$header$Value[raw_data_i$header$Field =="Mass"]),
+                       "sample_rate" = as.vector(raw_data_i$header$Value[raw_data_i$header$Field =="Sample Rate"]),
+                       "time_zone" = as.vector(raw_data_i$header$Value[raw_data_i$header$Field =="TimeZone"]),
+                       "device_model" = as.vector(raw_data_i$header$Value[raw_data_i$header$Field =="Device Type"]),
+                       "device_id" = as.vector(raw_data_i$header$Value[raw_data_i$header$Field =="Serial Number"]))
+        
         ## started at 11:50
         ## transform to 1440+ format
         AI_mat_i <- 
                 df_measures_i %>% 
-                dplyr::select(ID, phase, date, time, AI) %>% 
+                dplyr::select(-one_of(c("SD","MAD","MEDAD","HEADER_TIME_STAMP"))) %>% 
                 pivot_wider(names_from=time, values_from=AI)
         
         MAD_mat_i <- 
                 df_measures_i %>% 
-                dplyr::select(ID, phase, date, time, MAD) %>% 
+                dplyr::select(-one_of(c("SD","AI","MEDAD","HEADER_TIME_STAMP"))) %>% 
                 pivot_wider(names_from=time, values_from=MAD)
         
         MEDAD_mat_i <- 
                 df_measures_i %>% 
-                dplyr::select(ID, phase, date, time, MEDAD) %>% 
+                dplyr::select(-one_of(c("SD","MAD","AI","HEADER_TIME_STAMP"))) %>% 
                 pivot_wider(names_from=time, values_from=MEDAD)
         
         SD_mat_i <- 
                 df_measures_i %>% 
-                dplyr::select(ID, phase, date, time, SD) %>% 
+                dplyr::select(-one_of(c("AI","MAD","MEDAD","HEADER_TIME_STAMP"))) %>% 
                 pivot_wider(names_from=time, values_from=SD)
         
         ## dynamically assign to the global environment
@@ -200,8 +212,6 @@ for(i in inx_ls[[inx_arr]]){
         
 }
 
-
-matplot(t(AI_1003[,paste0("MIN",1:1440)]),type='l')
 ## save output
 save(list=c(paste0("AI_",inx_ls[[inx_arr]]),
      paste0("MAD_",inx_ls[[inx_arr]]),
@@ -210,4 +220,3 @@ save(list=c(paste0("AI_",inx_ls[[inx_arr]]),
      file=paste0("/dcl01/smart/data/activity/Rochester/processed_data/accel_wide_arr_",inx_arr,".RData"))
 
 
-load("/dcl01/smart/data/activity/Rochester/processed_data/accel_wide_arr_3.RData")
