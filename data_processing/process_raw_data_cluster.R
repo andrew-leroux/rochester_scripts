@@ -92,6 +92,11 @@ n_files <- length(accel_files)
 inx_arr <- scenario[1]
 n_arr   <- scenario[2]
 inx_ls  <- split(1:n_files, rep(1:n_arr, ceiling(n_files/n_arr))[1:n_files])
+
+outname <- paste0("/dcl01/smart/data/activity/Rochester/processed_data/accel_wide_arr_",inx_arr,".RData")
+if(file.exists(outname)){
+        q("no")
+}
 # accel_files <- accel_files[inx_ls[[inx_arr]]]
 
 
@@ -217,6 +222,6 @@ save(list=c(paste0("AI_",inx_ls[[inx_arr]]),
      paste0("MAD_",inx_ls[[inx_arr]]),
      paste0("MEDAD_",inx_ls[[inx_arr]]),
      paste0("SD_",inx_ls[[inx_arr]])), 
-     file=paste0("/dcl01/smart/data/activity/Rochester/processed_data/accel_wide_arr_",inx_arr,".RData"))
+     file=outname)
 
 
